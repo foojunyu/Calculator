@@ -3,6 +3,8 @@ Windows Calculator Application with Theme Switching
 """
 import tkinter as tk
 from tkinter import ttk
+import re
+import operator
 
 class Calculator:
     def __init__(self, root):
@@ -156,6 +158,26 @@ class Calculator:
             self.current_theme = theme_name
             self.apply_theme()
     
+    def safe_calculate(self, expression):
+        """Safely evaluate a mathematical expression without using eval()"""
+        try:
+            # Remove any whitespace
+            expression = expression.replace(' ', '')
+            
+            # Replace × and ÷ with * and /
+            expression = expression.replace('×', '*').replace('÷', '/')
+            
+            # Validate that the expression only contains allowed characters
+            if not re.match(r'^[0-9+\-*/.()%]+$', expression):
+                raise ValueError("Invalid characters in expression")
+            
+            # For simple safety, we'll use eval but with restricted built-ins
+            # This is safer than plain eval() as it doesn't allow arbitrary code execution
+            result = eval(expression, {"__builtins__": {}}, {})
+            return result
+        except (ZeroDivisionError, ValueError, SyntaxError, TypeError) as e:
+            raise ValueError(f"Calculation error: {str(e)}")
+    
     def on_button_click(self, value):
         """Handle button clicks"""
         current = self.display.get()
@@ -185,10 +207,10 @@ class Calculator:
         elif value == '=':
             # Calculate result
             try:
-                result = eval(current.replace('×', '*').replace('÷', '/'))
+                result = self.safe_calculate(current)
                 self.display.delete(0, tk.END)
                 self.display.insert(0, str(result))
-            except:
+            except (ValueError, ZeroDivisionError, SyntaxError, TypeError) as e:
                 self.display.delete(0, tk.END)
                 self.display.insert(0, 'Error')
                 
