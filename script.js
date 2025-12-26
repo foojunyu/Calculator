@@ -65,9 +65,15 @@ class Calculator {
                 break;
             case '÷':
                 if (current === 0) {
-                    alert('Cannot divide by zero');
-                    this.clear();
+                    this.currentOperand = 'Error';
+                    this.operation = undefined;
+                    this.previousOperand = '';
+                    this.shouldResetScreen = true;
                     this.updateDisplay();
+                    setTimeout(() => {
+                        this.clear();
+                        this.updateDisplay();
+                    }, 1500);
                     return;
                 }
                 computation = prev / current;
@@ -76,6 +82,7 @@ class Calculator {
                 return;
         }
         
+        computation = Math.round(computation * 100000000) / 100000000;
         this.currentOperand = computation.toString();
         this.operation = undefined;
         this.previousOperand = '';
@@ -189,7 +196,7 @@ document.querySelectorAll('[data-action]').forEach(button => {
 
 // Keyboard support
 document.addEventListener('keydown', (e) => {
-    if (e.key >= '0' && e.key <= '9' || e.key === '.') {
+    if ((e.key >= '0' && e.key <= '9') || e.key === '.') {
         calculator.appendNumber(e.key);
         calculator.updateDisplay();
     } else if (e.key === '+' || e.key === '-') {
