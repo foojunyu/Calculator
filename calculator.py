@@ -2,9 +2,7 @@
 Windows Calculator Application with Theme Switching
 """
 import tkinter as tk
-from tkinter import ttk
 import re
-import operator
 
 class Calculator:
     def __init__(self, root):
@@ -171,12 +169,135 @@ class Calculator:
             if not re.match(r'^[0-9+\-*/.()%]+$', expression):
                 raise ValueError("Invalid characters in expression")
             
-            # For simple safety, we'll use eval but with restricted built-ins
-            # This is safer than plain eval() as it doesn't allow arbitrary code execution
-            result = eval(expression, {"__builtins__": {}}, {})
-            return result
-        except (ZeroDivisionError, ValueError, SyntaxError, TypeError) as e:
+            # Parse and evaluate the expression safely
+            return self._evaluate_expression(expression)
+        except (ZeroDivisionError, ValueError, SyntaxError, TypeError, IndexError) as e:
             raise ValueError(f"Calculation error: {str(e)}")
+    
+    def _evaluate_expression(self, expr):
+        """Parse and evaluate a mathematical expression using operator precedence"""
+        # Remove parentheses by evaluating them first
+        while '(' in expr:
+            # Find innermost parentheses
+            start = expr.rfind('(')
+            if start == -1:
+                break
+            end = expr.find(')', start)
+            if end == -1:
+                raise ValueError("Mismatched parentheses")
+            
+            # Evaluate the expression inside parentheses
+            inner_result = self._evaluate_simple_expression(expr[start+1:end])
+            expr = expr[:start] + str(inner_result) + expr[end+1:]
+        
+        return self._evaluate_simple_expression(expr)
+    
+    def _evaluate_simple_expression(self, expr):
+        """Evaluate a simple expression without parentheses using operator precedence"""
+        if not expr:
+            raise ValueError("Empty expression")
+        
+        # Handle percentage
+        expr = self._handle_percentage(expr)
+        
+        # Split by + and - (lowest precedence), but keep track of operators
+        terms = []
+        current_term = ""
+        i = 0
+        while i < len(expr):
+            if expr[i] in "+-" and i > 0 and current_term and expr[i-1] not in "+-*/":
+                terms.append(current_term)
+                terms.append(expr[i])
+                current_term = ""
+            else:
+                current_term += expr[i]
+            i += 1
+        if current_term:
+            terms.append(current_term)
+        
+        if not terms:
+            raise ValueError("Invalid expression")
+        
+        # Evaluate multiplication and division first
+        result = self._evaluate_term(terms[0])
+        i = 1
+        while i < len(terms):
+            if i >= len(terms):
+                break
+            op = terms[i]
+            if i + 1 >= len(terms):
+                raise ValueError("Invalid expression")
+            next_val = self._evaluate_term(terms[i + 1])
+            
+            if op == '+':
+                result += next_val
+            elif op == '-':
+                result -= next_val
+            else:
+                raise ValueError(f"Unexpected operator: {op}")
+            i += 2
+        
+        return result
+    
+    def _evaluate_term(self, term):
+        """Evaluate a term (handles * and / operations)"""
+        # Split by * and /
+        factors = []
+        current_factor = ""
+        for i, char in enumerate(term):
+            if char in "*/" and i > 0 and current_factor:
+                factors.append(current_factor)
+                factors.append(char)
+                current_factor = ""
+            else:
+                current_factor += char
+        if current_factor:
+            factors.append(current_factor)
+        
+        if not factors:
+            raise ValueError("Invalid term")
+        
+        # Evaluate the factors
+        result = float(factors[0])
+        i = 1
+        while i < len(factors):
+            if i >= len(factors):
+                break
+            op = factors[i]
+            if i + 1 >= len(factors):
+                raise ValueError("Invalid term")
+            next_val = float(factors[i + 1])
+            
+            if op == '*':
+                result *= next_val
+            elif op == '/':
+                if next_val == 0:
+                    raise ZeroDivisionError("Division by zero")
+                result /= next_val
+            else:
+                raise ValueError(f"Unexpected operator: {op}")
+            i += 2
+        
+        return result
+    
+    def _handle_percentage(self, expr):
+        """Convert percentage to decimal"""
+        # Replace X% with X/100
+        parts = expr.split('%')
+        if len(parts) == 1:
+            return expr
+        
+        result = parts[0]
+        for i in range(1, len(parts)):
+            # Find the number before %
+            match = re.search(r'(\d+\.?\d*)$', result)
+            if match:
+                num = match.group(1)
+                result = result[:match.start()] + f"({num}/100)" + parts[i]
+            else:
+                result += parts[i]
+        
+        return result
     
     def on_button_click(self, value):
         """Handle button clicks"""
