@@ -1,0 +1,7 @@
+# Calculator Application Requirements
+
+# No external dependencies required for basic functionality
+# tkinter comes pre-installed with Python on Windows
+
+# Optional: For testing in headless environments
+# Pillow>=10.0.0  # For screenshot capabilities
